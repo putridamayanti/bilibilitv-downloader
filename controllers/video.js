@@ -60,7 +60,6 @@ exports.DownloadVideo = (req, res) => {
     const audioPath = `./downloads/${Slugify(body.title)}-audio.m4s`;
     const fileVideo = fs.createWriteStream(videoPath);
     const fileAudio = fs.createWriteStream(audioPath);
-
     const videoUrl = body.url;
     const audioUrl = body.audio?.url;
 
