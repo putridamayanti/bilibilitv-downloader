@@ -33,7 +33,7 @@ exports.GetDetailVideo = (req, res) => {
             }));
 
             parsedData.data.playurl.video.forEach((e) => {
-                if (e.video_resource.url !== '' && e.video_resource.height === 720) {
+                if (e.video_resource.url !== '') {
                     videos.push({
                         id: e.video_resource.id,
                         duration: e.video_resource.duration,
@@ -55,7 +55,6 @@ exports.GetDetailVideo = (req, res) => {
 
 exports.DownloadVideo = (req, res) => {
     const body = req.body;
-
     const videoPath = `./downloads/${Slugify(body.title)}-video.mp4`;
     const audioPath = `./downloads/${Slugify(body.title)}-audio.m4s`;
     const fileVideo = fs.createWriteStream(videoPath);
@@ -66,20 +65,19 @@ exports.DownloadVideo = (req, res) => {
     let downloadedVideo = 0;
     let downloadedAudio = 0;
 
-    let successDownloaded = 0;
+    res.send({data: 'Download processing ...'})
+
     https.get(videoUrl, response => {
         response.on('data', chunk => {
             downloadedVideo += chunk.length;
             let percent = Math.round((downloadedVideo / response.headers['content-length']) * 100)
-            console.log(percent.toFixed(0) + "% video downloaded");
+            console.log(`${percent.toFixed(0)}% video ${Slugify(body.title)}`);
         });
 
         response.pipe(fileVideo);
 
         response.on('end', () => {
-            console.log('Video downloaded!');
-            // successDownloaded += 1;
-            //
+            console.log(`Video downloaded! ${Slugify(body.title)}`);
             https.get(audioUrl, response => {
                 response.on('data', chunk => {
                     downloadedAudio += chunk.length;
@@ -90,19 +88,47 @@ exports.DownloadVideo = (req, res) => {
                 response.pipe(fileAudio);
 
                 response.on('end', () => {
-                    console.log('Audio downloaded!');
-                    successDownloaded += 1;
+                    console.log(`Audio downloaded! ${Slugify(body.title)}`);
 
-                    res.send({ message: 'Download Complete' })
+                    ffmpeg.setFfmpegPath(ffmpegPath);
+                    console.log('Merging ... ', Slugify(body.title))
+                    const outputPath = `./outputs/${Slugify(body.title)}.mp4`;
+                    let totalTime
+
+                    ffmpeg()
+                        .input(videoPath)
+                        .input(audioPath)
+                        .output(outputPath)
+                        .on('codecData', data => {
+                            totalTime = parseInt(data.duration.replace(/:/g, ''))
+                        })
+                        .on('progress', (progress) => {
+                            const time = parseInt(progress.timemark.replace(/:/g, ''))
+                            const percent = ((time / totalTime) * 100).toFixed(0)
+
+                            console.log(`Merging ${Slugify(body.title)}: ${percent}%`)
+                        })
+                        .on('end', () => {
+                            console.log('Merging finished');
+
+                            // res.send({ message: 'Download and Merge File Complete' })
+                        })
+                        .on('error', (err) => {
+                            console.error('Error:', err);
+                            // res.send({
+                            //     message: err
+                            // })
+                        })
+                        .run();
                 });
             });
         });
 
         response.on('error', (err) => {
             console.log('Error', err)
-            res.send({
-                message: err
-            })
+            // res.send({
+            //     message: err
+            // })
         });
     });
 };

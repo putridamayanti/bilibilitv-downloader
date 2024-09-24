@@ -153,6 +153,14 @@ exports.MergeVideoAudio = (req, res) => {
         .run();
 };
 
+exports.GetMergedVideos = (req, res) => {
+    const videos = readdirSync('./outputs')
+
+    res.send({
+        data: videos
+    });
+}
+
 exports.DeleteDownloadFile = (req, res) => {
     const files = readdirSync('./downloads')
     const currentFiles = files.filter(e => e.includes(req.query.filename));

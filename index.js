@@ -1,18 +1,18 @@
 const express = require("express");
 const bodyParser = require("body-parser");
-const https = require('https');
-const fs = require('fs');
+const ngrok = require("@ngrok/ngrok");
 
-const ffmpegPath = require('ffmpeg-static');
-const ffmpeg = require('fluent-ffmpeg');
 const {GetDetailVideo, DownloadVideo, MergeVideoAudio} = require("./controllers/video");
 const {DownloadAudioOnly} = require("./controllers/audio");
-const {GetLocalVideos} = require("./services/video");
+const {GetLocalVideos, GetMergedVideos} = require("./services/video");
 
 const app = express();
 
+require('dotenv').config()
+
 app.use(bodyParser.json({ limit: '50mb', extended: false }));
 app.use(bodyParser.urlencoded({ limit: '50mb', extended: false }));
+
 
 app.use(function(req, res, next) {
     res.header("Access-Control-Allow-Origin", "*");
@@ -26,6 +26,7 @@ app.get('/video', GetDetailVideo);
 app.post('/video-download', DownloadVideo);
 app.post('/video-merge', MergeVideoAudio);
 app.get('/local-video', GetLocalVideos);
+app.get('/merged-video', GetMergedVideos);
 app.get('/audio-download', DownloadAudioOnly)
 
 app.get('/audio-download', DownloadAudioOnly)
@@ -35,3 +36,12 @@ app.use(express.static(__dirname + '/app/uploads'));
 app.listen(PORT, () => {
     console.log(`Server is running on port http://localhost:${PORT}.`);
 });
+
+(async function () {
+    const listener = await ngrok.forward({
+        addr: PORT,
+        authtoken_from_env: true,
+    });
+
+    console.log(`Ingress established at: ${listener.url()}`);
+})();
